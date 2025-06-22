@@ -1,0 +1,18 @@
+{
+    "terminals": [
+        {
+            "splitTerminals": [
+                {
+                    "name": "aider",
+                    "commands": [
+                        "./run-aider.sh"
+                    ]
+                },
+                {
+                    "name": "project",
+                    "commands": [ "clear" ]
+                }
+            ]
+        }
+    ]
+}

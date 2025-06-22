@@ -1,0 +1,3 @@
+# dir where vscode go extension installs tools,
+# overridden from GOPATH
+gotools
