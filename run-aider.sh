@@ -7,8 +7,10 @@
 # ===============================================================================
 
 MODEL=$(cat .aider-model) 
+CHAT_MODE=ask
 
 aider --model ${MODEL} \
+     --chat-mode ${CHAT_MODE} \
      --no-auto-commits \
      --cache-prompts \
      --watch-files \
