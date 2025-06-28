@@ -6,7 +6,7 @@
 #   2) specify model in .aider-model file
 # ===============================================================================
 
-MODEL=$(cat .aider-model) 
+MODEL=$(head -1 .aider-model) 
 CHAT_MODE=ask
 
 aider --model ${MODEL} \
