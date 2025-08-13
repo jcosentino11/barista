@@ -7,5 +7,6 @@
     },
     "terminal.integrated.defaultProfile.osx": "devboxCompatibleShell",
     // override so we don't use GOPATH and accidentally clutter up home dir
-    "go.toolsGopath": "${workspaceFolder}/.vscode/gotools",
+    "go.toolsGopath": "${workspaceFolder}/.go",
+    "go.toolsManagement.autoUpdate": true,
 }
