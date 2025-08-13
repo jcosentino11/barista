@@ -55,6 +55,7 @@ type Server struct {
 	conn     *net.UDPConn
 	clients  map[string]client
 	shutdown chan bool
+	parser   Parser
 }
 
 func NewServer() Server {
@@ -62,6 +63,7 @@ func NewServer() Server {
 		Port:     8080,
 		clients:  make(map[string]client),
 		shutdown: make(chan bool),
+		parser:   &DefaultParser{},
 	}
 }
 
@@ -90,9 +92,14 @@ func (s *Server) receiveDatagrams() {
 			n, addr, err := s.conn.ReadFromUDP(buf)
 			if err != nil {
 				fmt.Printf("Error reading from UDP: %s\n", err)
+				continue
 			}
-			message := string(buf[:n])
-			fmt.Printf("Received from %s: %s\n", addr, message)
+			packet, err := s.parser.Parse(buf[:n])
+			if err != nil {
+				fmt.Printf("packet parsing failed: %w", err)
+				continue
+			}
+			fmt.Printf("Received from %s: %s\n", addr, packet)
 		}
 	}
 }
