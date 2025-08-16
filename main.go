@@ -72,17 +72,17 @@ func (s *Server) Start() error {
 	s.conn = conn
 
 	s.wg.Add(1)
-	go s.receiveDatagrams()
+	go s.readPackets()
 
 	return nil
 }
 
-func (s *Server) receiveDatagrams() {
+func (s *Server) readPackets() {
 	defer s.wg.Done()
 
-	buf := make([]byte, 1024)
+	buffer := make([]byte, 1024)
 	for {
-		n, addr, err := s.conn.ReadFromUDP(buf)
+		bytesRead, clientAddr, err := s.conn.ReadFromUDP(buffer)
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
 				return
@@ -90,13 +90,17 @@ func (s *Server) receiveDatagrams() {
 			fmt.Printf("Error reading from UDP: %s\n", err)
 			continue
 		}
-		packet, err := s.parser.Parse(buf[:n])
-		if err != nil {
-			fmt.Printf("packet parsing failed: %w", err)
-			continue
-		}
-		fmt.Printf("Received from %s: %s\n", addr, packet)
+		s.handlePacket(clientAddr, buffer[:bytesRead])
 	}
+}
+
+func (s *Server) handlePacket(clientAddr *net.UDPAddr, packetData []byte) {
+	packet, err := s.parser.Parse(packetData)
+	if err != nil {
+		fmt.Printf("Packet parsing failed from %s: %s\n", clientAddr, err)
+		return
+	}
+	fmt.Printf("Received from %s: %s\n", clientAddr, packet)
 }
 
 func (s *Server) Stop() error {
