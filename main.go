@@ -1,10 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -45,25 +47,17 @@ func main() {
 	time.Sleep(100 * time.Millisecond)
 }
 
-type client struct {
-	id     string
-	topics map[string]bool
-}
-
 type Server struct {
-	Port     int
-	conn     *net.UDPConn
-	clients  map[string]client
-	shutdown chan bool
-	parser   Parser
+	Port   int
+	conn   *net.UDPConn
+	parser Parser
+	wg     sync.WaitGroup
 }
 
 func NewServer() Server {
 	return Server{
-		Port:     8080,
-		clients:  make(map[string]client),
-		shutdown: make(chan bool),
-		parser:   &DefaultParser{},
+		Port:   8080,
+		parser: &DefaultParser{},
 	}
 }
 
@@ -77,41 +71,52 @@ func (s *Server) Start() error {
 	}
 	s.conn = conn
 
+	s.wg.Add(1)
 	go s.receiveDatagrams()
 
 	return nil
 }
 
 func (s *Server) receiveDatagrams() {
+	defer s.wg.Done()
+
 	buf := make([]byte, 1024)
 	for {
-		select {
-		case <-s.shutdown:
-			return
-		default:
-			n, addr, err := s.conn.ReadFromUDP(buf)
-			if err != nil {
-				fmt.Printf("Error reading from UDP: %s\n", err)
-				continue
+		n, addr, err := s.conn.ReadFromUDP(buf)
+		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return
 			}
-			packet, err := s.parser.Parse(buf[:n])
-			if err != nil {
-				fmt.Printf("packet parsing failed: %w", err)
-				continue
-			}
-			fmt.Printf("Received from %s: %s\n", addr, packet)
+			fmt.Printf("Error reading from UDP: %s\n", err)
+			continue
 		}
+		packet, err := s.parser.Parse(buf[:n])
+		if err != nil {
+			fmt.Printf("packet parsing failed: %w", err)
+			continue
+		}
+		fmt.Printf("Received from %s: %s\n", addr, packet)
 	}
 }
 
 func (s *Server) Stop() error {
-	close(s.shutdown)
 	if s.conn != nil {
-		err := s.conn.Close()
-		if err != nil {
-			return err
-		}
+		s.conn.Close()
 	}
+
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		fmt.Printf("shutdown complete\n")
+	case <-time.After(2 * time.Second):
+		fmt.Printf("shutdown timed out\n")
+	}
+
 	return nil
 }
 
