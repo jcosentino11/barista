@@ -4,8 +4,8 @@ default:
 build:
     go build -o bin/barista .
 
-run:
-    go run .
+run: build
+    ./bin/barista
 
 test:
     go test ./...
@@ -13,6 +13,9 @@ test:
 test-coverage:
     go test -coverprofile=coverage.out ./...
     go tool cover -html=coverage.out -o coverage.html
+
+integration-test:                                  
+    go test -tags=integration ./...
 
 fmt:
     go fmt ./...

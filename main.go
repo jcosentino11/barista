@@ -3,42 +3,29 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
+	"os/signal"
+
+	"josephcosentino.me/barista/barista"
 )
 
 func main() {
-	server := NewServer()
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
 
+	server := barista.NewServer()
 	err := server.Start()
 	if err != nil {
 		fmt.Printf("err: %s\n", err.Error())
 		os.Exit(1)
-		return
 	}
 
-	defer func() {
-		server.Stop()
-	}()
+	<-interrupt
 
-	messageCallback := func(topic string, message string) {
-		fmt.Printf("Received message on topic '%s': %s\n", topic, message)
-	}
-
-	client := NewClient()
-
-	err = client.Subscribe("topic", messageCallback)
+	err = server.Stop()
 	if err != nil {
-		fmt.Printf("err: %s\n", err.Error())
+		fmt.Printf("failed to stop server: %s\n", err.Error())
 		os.Exit(1)
-		return
 	}
 
-	err = client.Publish("topic", "test")
-	if err != nil {
-		fmt.Printf("err: %s\n", err.Error())
-		os.Exit(1)
-		return
-	}
-
-	time.Sleep(100 * time.Millisecond)
+	os.Exit(0)
 }

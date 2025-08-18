@@ -1,4 +1,4 @@
-package main
+package barista
 
 type Packet interface {
 	Type() string
