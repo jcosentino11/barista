@@ -29,7 +29,3 @@ clean:
     rm -rf bin/
     rm -f coverage.out coverage.html
     go clean
-
-deps:
-    go mod download
-    go mod tidy
