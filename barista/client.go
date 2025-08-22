@@ -8,6 +8,7 @@ import (
 type Client struct {
 	Config ClientConfig
 	writer PacketWriter
+	logger Logger
 }
 
 // TODO convert to interface
@@ -17,8 +18,10 @@ type ClientConfig struct {
 }
 
 func NewClient(config ClientConfig) Client {
+	logger := NewConsoleLogger("server")
 	return Client{
 		Config: config,
+		logger: logger,
 	}
 }
 

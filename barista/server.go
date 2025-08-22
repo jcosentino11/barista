@@ -19,6 +19,7 @@ type Server struct {
 	wg     sync.WaitGroup
 	ctx    context.Context
 	cancel context.CancelFunc
+	logger Logger
 }
 
 type ServerConfig struct {
@@ -27,10 +28,13 @@ type ServerConfig struct {
 
 func NewServer(config ServerConfig) Server {
 	ctx, cancel := context.WithCancel(context.Background())
+	// TODO configurable, log to file
+	logger := NewConsoleLogger("server")
 	return Server{
 		Config: config,
 		ctx:    ctx,
 		cancel: cancel,
+		logger: logger,
 	}
 }
 
@@ -50,7 +54,7 @@ func (s *Server) worker() {
 
 	reader, err := s.newPacketReader()
 	if err != nil {
-		fmt.Printf("unable to create reader: %s\n", err)
+		s.logger.Printf("unable to create reader: %s\n", err)
 		return
 	}
 
@@ -58,7 +62,7 @@ func (s *Server) worker() {
 
 	defer func() {
 		if err := reader.Close(); err != nil {
-			fmt.Printf("unable to close reader: %s\n", err)
+			s.logger.Printf("unable to close reader: %s\n", err)
 		}
 	}()
 
@@ -68,11 +72,11 @@ func (s *Server) worker() {
 			return
 		case packet, ok := <-packets:
 			if !ok {
-				fmt.Println("reader channel closed, exiting worker")
+				s.logger.Printf("reader channel closed, exiting worker")
 				return
 			}
 			if err := s.handlePacket(packet); err != nil {
-				fmt.Printf("err handling packet: %s", err)
+				s.logger.Printf("err handling packet: %s", err)
 			}
 		}
 	}
@@ -90,7 +94,7 @@ func (s *Server) newPacketReader() (PacketReader, error) {
 
 // TODO pass this in to server
 func (s *Server) handlePacket(packet PacketResult) error {
-	fmt.Printf("Received packet: %s\n", packet)
+	s.logger.Printf("Received packet: %v\n", packet)
 	return nil
 }
 

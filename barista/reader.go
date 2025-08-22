@@ -2,7 +2,6 @@ package barista
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -32,14 +31,17 @@ type UdpPacketReader struct {
 	closed  atomic.Bool
 	once    sync.Once
 	wg      sync.WaitGroup
+	logger  Logger
 }
 
 func NewUdpPacketReader(conn *net.UDPConn) UdpPacketReader {
+	logger := NewConsoleLogger("udppacketreader")
 	return UdpPacketReader{
 		conn:   conn,
 		parser: &DefaultParser{},
 		// TODO set bounds, handle backpressure
 		packets: make(chan PacketResult),
+		logger:  logger,
 	}
 }
 
@@ -98,7 +100,7 @@ func (r *UdpPacketReader) readPackets() {
 			if errors.Is(err, net.ErrClosed) {
 				return
 			}
-			fmt.Printf("error reading from UDP: %s\n", err)
+			r.logger.Printf("error reading from UDP: %s\n", err)
 			continue
 		}
 		packet, err := r.parser.Parse(buffer[:bytesRead])
