@@ -29,7 +29,9 @@ func TestBarista(t *testing.T) {
 		fmt.Printf("Received message on topic '%s': %s\n", topic, message)
 	}
 
-	client := barista.NewClient()
+	client := barista.NewClient(barista.ClientConfig{
+		ServerPort: 8080,
+	})
 
 	err = client.Subscribe("topic", messageCallback)
 	if err != nil {

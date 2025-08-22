@@ -7,17 +7,21 @@ import (
 )
 
 type Client struct {
-	Port int
+	Config ClientConfig
 }
 
-func NewClient() Client {
+type ClientConfig struct {
+	ServerPort int
+}
+
+func NewClient(config ClientConfig) Client {
 	return Client{
-		Port: 8080,
+		config,
 	}
 }
 
 func (c *Client) sendDatagram(message string) error {
-	conn, err := net.Dial("udp", net.JoinHostPort("localhost", strconv.Itoa(c.Port)))
+	conn, err := net.Dial("udp", net.JoinHostPort("localhost", strconv.Itoa(c.Config.ServerPort)))
 	if err != nil {
 		return err
 	}
