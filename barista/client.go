@@ -1,47 +1,57 @@
 package barista
 
 import (
-	"fmt"
 	"net"
 	"strconv"
 )
 
 type Client struct {
 	Config ClientConfig
+	writer PacketWriter
 }
 
+// TODO convert to interface
 type ClientConfig struct {
+	ServerHost string
 	ServerPort int
 }
 
 func NewClient(config ClientConfig) Client {
 	return Client{
-		config,
+		Config: config,
 	}
 }
 
-func (c *Client) sendDatagram(message string) error {
-	conn, err := net.Dial("udp", net.JoinHostPort("localhost", strconv.Itoa(c.Config.ServerPort)))
+func (c *Client) Connect() error {
+	conn, err := net.Dial("udp", net.JoinHostPort(c.Config.ServerHost, strconv.Itoa(c.Config.ServerPort)))
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	_, err = conn.Write([]byte(message))
-	return err
-}
-
-func (c *Client) Subscribe(topic string, messageCallback func(string, string)) error {
-	err := c.sendDatagram("SUBSCRIBE " + topic)
-	if err != nil {
-		return fmt.Errorf("unable to subscribe to topic %s: %w", topic, err)
-	}
+	writer := NewNetworkPacketWriter(conn)
+	c.writer = &writer
 	return nil
 }
 
+func (c *Client) Subscribe(topic string, messageCallback func(string, string)) error {
+	packet := &SubscribePacket{
+		Topic: topic,
+	}
+	// TODO register callback, wait for acknowledgement
+	return c.writer.Write(packet)
+}
+
 func (c *Client) Publish(topic string, message string) error {
-	err := c.sendDatagram("PUBLISH " + topic + " " + message)
-	if err != nil {
-		return fmt.Errorf("unable to publish to topic %s: %w", topic, err)
+	packet := &PublishPacket{
+		Topic:   topic,
+		Content: message,
+	}
+	return c.writer.Write(packet)
+}
+
+// TODO make thread safe?
+func (c *Client) Close() error {
+	if c.writer != nil {
+		return c.writer.Close()
 	}
 	return nil
 }

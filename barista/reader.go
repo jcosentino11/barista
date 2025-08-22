@@ -47,6 +47,7 @@ func (r *UdpPacketReader) Packets() <-chan PacketResult {
 	return r.packets
 }
 
+// TODO use context to manage lifecycle?
 func (r *UdpPacketReader) Start() error {
 	if r.closed.Load() {
 		return errors.New(ErrReaderClosed)
@@ -80,6 +81,7 @@ func (r *UdpPacketReader) closeConnection() error {
 	return nil
 }
 
+// TODO feels awkward to have this as it's own method
 func (r *UdpPacketReader) readPacketsAsync() {
 	r.wg.Add(1)
 	go func() {
