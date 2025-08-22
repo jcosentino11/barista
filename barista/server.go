@@ -15,16 +15,20 @@ const (
 )
 
 type Server struct {
-	Port   int
+	Config ServerConfig
 	wg     sync.WaitGroup
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func NewServer() Server {
+type ServerConfig struct {
+	Port int
+}
+
+func NewServer(config ServerConfig) Server {
 	ctx, cancel := context.WithCancel(context.Background())
 	return Server{
-		Port:   8080,
+		Config: config,
 		ctx:    ctx,
 		cancel: cancel,
 	}
@@ -75,9 +79,9 @@ func (s *Server) worker() {
 }
 
 func (s *Server) newPacketReader() (PacketReader, error) {
-	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: s.Port})
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: s.Config.Port})
 	if err != nil {
-		return nil, fmt.Errorf("unable to start server on port %d: %w", s.Port, err)
+		return nil, fmt.Errorf("unable to start server on port %d: %w", s.Config.Port, err)
 	}
 
 	reader := NewUdpPacketReader(conn)

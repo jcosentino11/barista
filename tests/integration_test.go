@@ -12,7 +12,9 @@ import (
 )
 
 func TestBarista(t *testing.T) {
-	server := barista.NewServer()
+	server := barista.NewServer(barista.ServerConfig{
+		Port: 8080,
+	})
 
 	err := server.Start()
 	if err != nil {

@@ -12,14 +12,16 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	server := barista.NewServer()
+	server := barista.NewServer(barista.ServerConfig{
+		Port: 8080,
+	})
 	err := server.Start()
 	if err != nil {
 		fmt.Printf("err: %s\n", err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Printf("server started on port: %d\n", server.Port)
+	fmt.Printf("server started on port: %d\n", server.Config.Port)
 
 	<-interrupt
 
