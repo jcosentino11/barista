@@ -3,8 +3,6 @@
 package integration
 
 import (
-	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -18,15 +16,13 @@ func TestBarista(t *testing.T) {
 
 	err := server.Start()
 	if err != nil {
-		fmt.Printf("err: %s\n", err.Error())
-		os.Exit(1)
-		return
+		t.Fatalf("unable to start server: %s\n", err.Error())
 	}
 
 	defer server.Stop()
 
 	messageCallback := func(topic string, message string) {
-		fmt.Printf("Received message on topic '%s': %s\n", topic, message)
+		t.Logf("received message on topic '%s': %s\n", topic, message)
 	}
 
 	client := barista.NewClient(barista.ClientConfig{
@@ -35,24 +31,19 @@ func TestBarista(t *testing.T) {
 	})
 
 	if err := client.Connect(); err != nil {
-		fmt.Printf("failed to connect: %s\n", err.Error())
-		return
+		t.Fatalf("failed to connect: %s\n", err.Error())
 	}
 
 	defer client.Close()
 
 	err = client.Subscribe("topic", messageCallback)
 	if err != nil {
-		fmt.Printf("failed to subscribe: %s\n", err.Error())
-		os.Exit(1)
-		return
+		t.Fatalf("failed to subscribe: %s\n", err.Error())
 	}
 
 	err = client.Publish("topic", "test")
 	if err != nil {
-		fmt.Printf("failed to publish: %s\n", err.Error())
-		os.Exit(1)
-		return
+		t.Fatalf("failed to publish: %s\n", err.Error())
 	}
 
 	time.Sleep(100 * time.Millisecond)
