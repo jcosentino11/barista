@@ -19,13 +19,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("server started on port: %d\n", server.Port)
+
 	<-interrupt
+
+	fmt.Printf("stopping server\n")
 
 	err = server.Stop()
 	if err != nil {
 		fmt.Printf("failed to stop server: %s\n", err.Error())
 		os.Exit(1)
 	}
+
+	fmt.Printf("server stopped\n")
 
 	os.Exit(0)
 }

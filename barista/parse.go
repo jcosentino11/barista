@@ -8,7 +8,7 @@ import (
 // TODO validation
 // TODO efficiency
 
-type Parser interface {
+type PacketParser interface {
 	Parse(data []byte) (Packet, error)
 }
 

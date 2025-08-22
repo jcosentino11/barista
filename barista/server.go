@@ -1,86 +1,97 @@
 package barista
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"sync"
-	"time"
+)
+
+const (
+	ErrServerClosed        = "server is closed"
+	ErrServerRunning       = "server is running"
+	ErrServerContextClosed = "server context is closed"
 )
 
 type Server struct {
 	Port   int
-	conn   *net.UDPConn
-	parser Parser
 	wg     sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func NewServer() Server {
+	ctx, cancel := context.WithCancel(context.Background())
 	return Server{
 		Port:   8080,
-		parser: &DefaultParser{},
+		ctx:    ctx,
+		cancel: cancel,
 	}
 }
 
 func (s *Server) Start() error {
-	if s.conn != nil {
-		return fmt.Errorf("server is already listening at %s", s.conn.LocalAddr())
+	select {
+	case <-s.ctx.Done():
+		return errors.New(ErrServerClosed)
+	default:
+		s.wg.Add(1)
+		go s.worker()
+		return nil
 	}
+}
+
+func (s *Server) worker() {
+	defer s.wg.Done()
+
+	reader, err := s.newPacketReader()
+	if err != nil {
+		fmt.Printf("unable to create reader: %s\n", err)
+		return
+	}
+
+	packets := reader.Packets()
+
+	defer func() {
+		if err := reader.Close(); err != nil {
+			fmt.Printf("unable to close reader: %s\n", err)
+		}
+	}()
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case packet, ok := <-packets:
+			if !ok {
+				fmt.Println("reader channel closed, exiting worker")
+				return
+			}
+			if err := s.handlePacket(packet); err != nil {
+				fmt.Printf("err handling packet: %s", err)
+			}
+		}
+	}
+}
+
+func (s *Server) newPacketReader() (PacketReader, error) {
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: s.Port})
 	if err != nil {
-		return fmt.Errorf("unable to start server on port %d: %w", s.Port, err)
+		return nil, fmt.Errorf("unable to start server on port %d: %w", s.Port, err)
 	}
-	s.conn = conn
 
-	s.wg.Add(1)
-	go s.readPackets()
+	reader := NewUdpPacketReader(conn)
+	return &reader, nil
+}
 
+// TODO pass this in to server
+func (s *Server) handlePacket(packet PacketResult) error {
+	fmt.Printf("Received packet: %s\n", packet)
 	return nil
 }
 
-func (s *Server) readPackets() {
-	defer s.wg.Done()
-
-	buffer := make([]byte, 1024)
-	for {
-		bytesRead, clientAddr, err := s.conn.ReadFromUDP(buffer)
-		if err != nil {
-			if errors.Is(err, net.ErrClosed) {
-				return
-			}
-			fmt.Printf("Error reading from UDP: %s\n", err)
-			continue
-		}
-		s.handlePacket(clientAddr, buffer[:bytesRead])
-	}
-}
-
-func (s *Server) handlePacket(clientAddr *net.UDPAddr, packetData []byte) {
-	packet, err := s.parser.Parse(packetData)
-	if err != nil {
-		fmt.Printf("Packet parsing failed from %s: %s\n", clientAddr, err)
-		return
-	}
-	fmt.Printf("Received from %s: %s\n", clientAddr, packet)
-}
-
 func (s *Server) Stop() error {
-	if s.conn != nil {
-		s.conn.Close()
-	}
-
-	done := make(chan struct{})
-	go func() {
-		s.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		fmt.Printf("shutdown complete\n")
-	case <-time.After(2 * time.Second):
-		fmt.Printf("shutdown timed out\n")
-	}
-
+	s.cancel()
+	s.wg.Wait()
 	return nil
 }
