@@ -23,7 +23,7 @@ fmt:
 vet:
     go vet ./...
 
-check: fmt vet test
+check: fmt vet test integration-test
 
 clean:
     rm -rf bin/
