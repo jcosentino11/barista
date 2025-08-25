@@ -1,6 +1,7 @@
 package barista
 
 import (
+	"context"
 	"errors"
 	"net"
 	"sync"
@@ -107,6 +108,76 @@ func (r *UdpPacketReader) readPackets() {
 		r.packets <- PacketResult{
 			Packet: packet,
 			Err:    err,
+		}
+	}
+}
+
+type PacketReaderWorker struct {
+	newReader func() (PacketReader, error)
+	handler   func(PacketResult) error
+	wg        sync.WaitGroup
+	ctx       context.Context
+	logger    Logger
+}
+
+func NewPacketReaderWorker(
+	ctx context.Context,
+	newReader func() (PacketReader, error),
+	handler func(PacketResult) error) PacketReaderWorker {
+
+	logger := NewConsoleLogger("packet-reader")
+	return PacketReaderWorker{
+		newReader: newReader,
+		logger:    logger,
+		handler:   handler,
+		ctx:       ctx,
+	}
+}
+
+func (w *PacketReaderWorker) Start() error {
+	select {
+	case <-w.ctx.Done():
+		return errors.New(ErrContextClosed)
+	default:
+		w.wg.Add(1)
+		go w.worker()
+		return nil
+	}
+}
+
+func (w *PacketReaderWorker) Wait() {
+	w.wg.Wait()
+}
+
+func (w *PacketReaderWorker) worker() {
+	defer w.wg.Done()
+
+	reader, err := w.newReader()
+	if err != nil {
+		w.logger.Printf("unable to create reader: %s\n", err)
+		return
+	}
+
+	packets := reader.Packets()
+
+	defer func() {
+		if err := reader.Close(); err != nil {
+			w.logger.Printf("unable to close reader: %s\n", err)
+		}
+	}()
+
+	for {
+		select {
+		case <-w.ctx.Done():
+			return
+		case packet, ok := <-packets:
+			if !ok {
+				w.logger.Printf("reader channel closed, exiting worker")
+				return
+			}
+			if err := w.handler(packet); err != nil {
+				w.logger.Printf("err handling packet: %s", err)
+			}
 		}
 	}
 }
