@@ -2,7 +2,6 @@ package barista
 
 type Packet interface {
 	Type() string
-	// TODO decouple serialization?
 	Bytes() []byte
 }
 
