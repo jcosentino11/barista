@@ -6,5 +6,12 @@
   ],
   "env": {                                                          
     "GOMODCACHE": "$HOME/.go"                                   
-  }  
+  },
+  "shell": {
+    "init_hook": [
+      "echo '#!/bin/sh' > .git/hooks/pre-commit",
+      "echo 'just check' >> .git/hooks/pre-commit",
+      "chmod +x .git/hooks/pre-commit"
+    ]
+  }
 }
