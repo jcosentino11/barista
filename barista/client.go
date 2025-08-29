@@ -7,7 +7,7 @@ import (
 
 type Client struct {
 	Config ClientConfig
-	writer PacketWriter
+	writer NetworkWriter
 	logger Logger
 }
 
@@ -30,7 +30,7 @@ func (c *Client) Connect() error {
 	if err != nil {
 		return err
 	}
-	writer := NewNetworkPacketWriter(conn)
+	writer := NewNetworkWriter(conn)
 	c.writer = &writer
 	return nil
 }
@@ -40,7 +40,7 @@ func (c *Client) Subscribe(topic string, messageCallback func(string, string)) e
 		Topic: topic,
 	}
 	// TODO register callback, wait for acknowledgement
-	return c.writer.Write(packet)
+	return c.writer.Write(packet.Bytes())
 }
 
 func (c *Client) Publish(topic string, message string) error {
@@ -48,7 +48,7 @@ func (c *Client) Publish(topic string, message string) error {
 		Topic:   topic,
 		Content: message,
 	}
-	return c.writer.Write(packet)
+	return c.writer.Write(packet.Bytes())
 }
 
 // TODO make thread safe?

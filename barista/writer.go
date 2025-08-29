@@ -4,29 +4,29 @@ import (
 	"net"
 )
 
-type PacketWriter interface {
-	Write(Packet) error
+type NetworkWriter interface {
+	Write(buf []byte) error
 	Close() error
 }
 
-type NetworkPacketWriter struct {
+type NetworkConnWriter struct {
 	conn net.Conn
 }
 
-func NewNetworkPacketWriter(conn net.Conn) NetworkPacketWriter {
-	return NetworkPacketWriter{
+func NewNetworkWriter(conn net.Conn) NetworkConnWriter {
+	return NetworkConnWriter{
 		conn: conn,
 	}
 }
 
-func (w *NetworkPacketWriter) Write(packet Packet) error {
+func (w *NetworkConnWriter) Write(buf []byte) error {
 	// TODO handle partial writes?
-	_, err := w.conn.Write(packet.Bytes())
+	_, err := w.conn.Write(buf)
 	return err
 }
 
 // TODO make thread safe?
-func (w *NetworkPacketWriter) Close() error {
+func (w *NetworkConnWriter) Close() error {
 	if w.conn != nil {
 		return w.conn.Close()
 	}
