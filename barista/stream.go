@@ -32,7 +32,7 @@ type NetworkPacketStream struct {
 }
 
 func NewNetworkPacketStream(ctx context.Context, networkReader NetworkReader) NetworkPacketStream {
-	logger := NewConsoleLogger("default-packet-reader")
+	logger := NewConsoleLogger("netowkr-packet-stream")
 	logger.Verbose = true // TODO
 	return NetworkPacketStream{
 		networkReader: networkReader,
