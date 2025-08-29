@@ -32,7 +32,7 @@ type DefaultPacketReader struct {
 }
 
 func NewDefaultPacketReader(ctx context.Context, networkReader NetworkReader) DefaultPacketReader {
-	logger := NewConsoleLogger("udp-packet-reader")
+	logger := NewConsoleLogger("default-packet-reader")
 	logger.Verbose = true // TODO
 	return DefaultPacketReader{
 		networkReader: networkReader,
