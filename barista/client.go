@@ -30,7 +30,7 @@ func (c *Client) Connect() error {
 	if err != nil {
 		return err
 	}
-	writer := NewNetworkWriter(conn)
+	writer := NewNetworkConnWriter(conn)
 	c.writer = &writer
 	return nil
 }

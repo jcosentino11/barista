@@ -13,7 +13,7 @@ type NetworkConnWriter struct {
 	conn net.Conn
 }
 
-func NewNetworkWriter(conn net.Conn) NetworkConnWriter {
+func NewNetworkConnWriter(conn net.Conn) NetworkConnWriter {
 	return NetworkConnWriter{
 		conn: conn,
 	}
