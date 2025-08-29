@@ -14,6 +14,10 @@ type PacketParser interface {
 
 type DefaultParser struct{}
 
+func NewDefaultParser() DefaultParser {
+	return DefaultParser{}
+}
+
 func (p *DefaultParser) Parse(data []byte) (Packet, error) {
 	parts := strings.Split(string(data), " ")
 	packetType := parts[0]

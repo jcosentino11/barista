@@ -34,9 +34,10 @@ type NetworkPacketStream struct {
 func NewNetworkPacketStream(ctx context.Context, networkReader NetworkReader) NetworkPacketStream {
 	logger := NewConsoleLogger("netowkr-packet-stream")
 	logger.Verbose = true // TODO
+	parser := NewDefaultParser()
 	return NetworkPacketStream{
 		networkReader: networkReader,
-		parser:        &DefaultParser{},
+		parser:        &parser,
 		// TODO set bounds, handle backpressure
 		packets: make(chan PacketResult),
 		ctx:     ctx,
