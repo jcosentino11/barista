@@ -22,7 +22,7 @@ type PacketStream interface {
 	Close() error
 }
 
-type DefaultPacketReader struct {
+type NetworkPacketStream struct {
 	networkReader NetworkReader
 	parser        PacketParser
 	packets       chan PacketResult
@@ -31,10 +31,10 @@ type DefaultPacketReader struct {
 	logger        Logger
 }
 
-func NewDefaultPacketReader(ctx context.Context, networkReader NetworkReader) DefaultPacketReader {
+func NewNetworkPacketStream(ctx context.Context, networkReader NetworkReader) NetworkPacketStream {
 	logger := NewConsoleLogger("default-packet-reader")
 	logger.Verbose = true // TODO
-	return DefaultPacketReader{
+	return NetworkPacketStream{
 		networkReader: networkReader,
 		parser:        &DefaultParser{},
 		// TODO set bounds, handle backpressure
@@ -44,7 +44,7 @@ func NewDefaultPacketReader(ctx context.Context, networkReader NetworkReader) De
 	}
 }
 
-func (r *DefaultPacketReader) Stream() (<-chan PacketResult, error) {
+func (r *NetworkPacketStream) Stream() (<-chan PacketResult, error) {
 	select {
 	case <-r.ctx.Done():
 		return nil, errors.New(ErrContextClosed)
@@ -55,7 +55,7 @@ func (r *DefaultPacketReader) Stream() (<-chan PacketResult, error) {
 	}
 }
 
-func (r *DefaultPacketReader) readPackets() {
+func (r *NetworkPacketStream) readPackets() {
 	defer r.wg.Done()
 
 	for {
@@ -78,7 +78,7 @@ func (r *DefaultPacketReader) readPackets() {
 	}
 }
 
-func (r *DefaultPacketReader) Close() error {
+func (r *NetworkPacketStream) Close() error {
 	close(r.packets)
 	if err := r.networkReader.Close(); err != nil {
 		return err

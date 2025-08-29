@@ -3,34 +3,34 @@ package barista
 import "context"
 
 type PacketProcessor struct {
-	newReader func() (PacketStream, error)
-	handler   func(PacketResult) error
-	logger    Logger
+	newPacketStream func() (PacketStream, error)
+	handler         func(PacketResult) error
+	logger          Logger
 }
 
 func NewPacketProcessor(
-	newReader func() (PacketStream, error),
+	newPacketStream func() (PacketStream, error),
 	handler func(PacketResult) error) PacketProcessor {
 
 	logger := NewConsoleLogger("packet-processor")
 	logger.Verbose = false // TODO
 	return PacketProcessor{
-		newReader: newReader,
-		logger:    logger,
-		handler:   handler,
+		newPacketStream: newPacketStream,
+		logger:          logger,
+		handler:         handler,
 	}
 }
 
 func (w *PacketProcessor) ProcessPackets(ctx context.Context) error {
-	reader, err := w.newReader()
+	stream, err := w.newPacketStream()
 	if err != nil {
 		w.logger.Printf("unable to create reader: %s\n", err)
 		return err
 	}
 
-	defer reader.Close()
+	defer stream.Close()
 
-	packets, err := reader.Stream()
+	packets, err := stream.Stream()
 	if err != nil {
 		w.logger.Printf("unable to get reader packets: %s\n", err)
 		return err

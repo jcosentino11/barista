@@ -37,7 +37,7 @@ func NewServer(config ServerConfig) *Server {
 		cancel: cancel,
 		logger: logger,
 	}
-	server.processor = NewPacketProcessor(server.newPacketReader, server.handlePacket)
+	server.processor = NewPacketProcessor(server.newPacketStream, server.handlePacket)
 	return &server
 }
 
@@ -57,15 +57,15 @@ func (s *Server) Start() error {
 	}
 }
 
-func (s *Server) newPacketReader() (PacketStream, error) {
+func (s *Server) newPacketStream() (PacketStream, error) {
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: s.Config.Port})
 	if err != nil {
 		return nil, fmt.Errorf("unable to start server on port %d: %w", s.Config.Port, err)
 	}
 
-	network_reader := NewUdpNetworkReader(conn)
-	packet_reader := NewDefaultPacketReader(s.ctx, &network_reader)
-	return &packet_reader, nil
+	reader := NewUdpNetworkReader(conn)
+	stream := NewNetworkPacketStream(s.ctx, &reader)
+	return &stream, nil
 }
 
 // TODO pass this in to server
