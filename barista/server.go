@@ -57,7 +57,7 @@ func (s *Server) Start() error {
 	}
 }
 
-func (s *Server) newPacketReader() (PacketReader, error) {
+func (s *Server) newPacketReader() (PacketStream, error) {
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: s.Config.Port})
 	if err != nil {
 		return nil, fmt.Errorf("unable to start server on port %d: %w", s.Config.Port, err)

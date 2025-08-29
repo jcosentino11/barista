@@ -3,13 +3,13 @@ package barista
 import "context"
 
 type PacketProcessor struct {
-	newReader func() (PacketReader, error)
+	newReader func() (PacketStream, error)
 	handler   func(PacketResult) error
 	logger    Logger
 }
 
 func NewPacketProcessor(
-	newReader func() (PacketReader, error),
+	newReader func() (PacketStream, error),
 	handler func(PacketResult) error) PacketProcessor {
 
 	logger := NewConsoleLogger("packet-processor")
@@ -30,7 +30,7 @@ func (w *PacketProcessor) ProcessPackets(ctx context.Context) error {
 
 	defer reader.Close()
 
-	packets, err := reader.Packets()
+	packets, err := reader.Stream()
 	if err != nil {
 		w.logger.Printf("unable to get reader packets: %s\n", err)
 		return err

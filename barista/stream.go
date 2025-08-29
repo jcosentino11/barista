@@ -17,8 +17,8 @@ type PacketResult struct {
 	Err    error
 }
 
-type PacketReader interface {
-	Packets() (<-chan PacketResult, error)
+type PacketStream interface {
+	Stream() (<-chan PacketResult, error)
 	Close() error
 }
 
@@ -44,7 +44,7 @@ func NewDefaultPacketReader(ctx context.Context, networkReader NetworkReader) De
 	}
 }
 
-func (r *DefaultPacketReader) Packets() (<-chan PacketResult, error) {
+func (r *DefaultPacketReader) Stream() (<-chan PacketResult, error) {
 	select {
 	case <-r.ctx.Done():
 		return nil, errors.New(ErrContextClosed)
