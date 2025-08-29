@@ -12,9 +12,7 @@ func BenchmarkParse(b *testing.B) {
 	}
 	data := packet.Bytes()
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		parser.Parse(data)
 	}
 }
