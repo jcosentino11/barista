@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"sync/atomic"
 )
 
 const (
@@ -20,8 +19,7 @@ type PacketResult struct {
 }
 
 type PacketReader interface {
-	Packets() <-chan PacketResult
-	Start() error
+	Packets() (<-chan PacketResult, error)
 	Close() error
 }
 
@@ -29,51 +27,71 @@ type UdpPacketReader struct {
 	conn    *net.UDPConn
 	parser  PacketParser
 	packets chan PacketResult
-	closed  atomic.Bool
-	once    sync.Once
+	ctx     context.Context
 	wg      sync.WaitGroup
 	logger  Logger
 }
 
-func NewUdpPacketReader(conn *net.UDPConn) UdpPacketReader {
-	logger := NewConsoleLogger("udppacketreader")
+func NewUdpPacketReader(ctx context.Context, conn *net.UDPConn) UdpPacketReader {
+	logger := NewConsoleLogger("udp-packet-reader")
+	logger.Verbose = true // TODO
 	return UdpPacketReader{
 		conn:   conn,
 		parser: &DefaultParser{},
 		// TODO set bounds, handle backpressure
 		packets: make(chan PacketResult),
+		ctx:     ctx,
 		logger:  logger,
 	}
 }
 
-func (r *UdpPacketReader) Packets() <-chan PacketResult {
-	return r.packets
+func (r *UdpPacketReader) Packets() (<-chan PacketResult, error) {
+	select {
+	case <-r.ctx.Done():
+		return nil, errors.New(ErrContextClosed)
+	default:
+		r.wg.Add(1)
+		go r.readPackets()
+		return r.packets, nil
+	}
 }
 
-// TODO use context to manage lifecycle?
-func (r *UdpPacketReader) Start() error {
-	if r.closed.Load() {
-		return errors.New(ErrReaderClosed)
+func (r *UdpPacketReader) readPackets() {
+	defer r.wg.Done()
+
+	buffer := make([]byte, 1024)
+	for {
+		select {
+		case <-r.ctx.Done():
+			r.logger.Verbosef("closed ctx detected\n")
+			return
+		default:
+			bytesRead, _, err := r.conn.ReadFromUDP(buffer)
+			if err != nil {
+				if errors.Is(err, net.ErrClosed) {
+					return
+				}
+				r.logger.Printf("error reading from UDP: %s\n", err)
+				continue
+			}
+			packet, err := r.parser.Parse(buffer[:bytesRead])
+			r.packets <- PacketResult{
+				Packet: packet,
+				Err:    err,
+			}
+		}
 	}
-
-	r.once.Do(r.readPacketsAsync)
-
-	return nil
 }
 
 func (r *UdpPacketReader) Close() error {
-	if !r.closed.CompareAndSwap(false, true) {
-		return nil
-	}
+	close(r.packets)
+	r.logger.Verbosef("packets channel closed\n")
 
 	if err := r.closeConnection(); err != nil {
-		return err
+		r.logger.Printf("failed to close connection: %s\n", err)
 	}
-
-	r.wg.Wait() // TODO consider timeout
-
-	close(r.packets)
-
+	r.logger.Verbosef("connection closed\n")
+	r.wg.Wait()
 	return nil
 }
 
@@ -82,102 +100,4 @@ func (r *UdpPacketReader) closeConnection() error {
 		return r.conn.Close()
 	}
 	return nil
-}
-
-// TODO feels awkward to have this as it's own method
-func (r *UdpPacketReader) readPacketsAsync() {
-	r.wg.Add(1)
-	go func() {
-		defer r.wg.Done()
-		r.readPackets()
-	}()
-}
-
-func (r *UdpPacketReader) readPackets() {
-	buffer := make([]byte, 1024)
-	for {
-		bytesRead, _, err := r.conn.ReadFromUDP(buffer)
-		if err != nil {
-			if errors.Is(err, net.ErrClosed) {
-				return
-			}
-			r.logger.Printf("error reading from UDP: %s\n", err)
-			continue
-		}
-		packet, err := r.parser.Parse(buffer[:bytesRead])
-		r.packets <- PacketResult{
-			Packet: packet,
-			Err:    err,
-		}
-	}
-}
-
-type PacketReaderWorker struct {
-	newReader func() (PacketReader, error)
-	handler   func(PacketResult) error
-	wg        sync.WaitGroup
-	ctx       context.Context
-	logger    Logger
-}
-
-func NewPacketReaderWorker(
-	ctx context.Context,
-	newReader func() (PacketReader, error),
-	handler func(PacketResult) error) PacketReaderWorker {
-
-	logger := NewConsoleLogger("packet-reader")
-	return PacketReaderWorker{
-		newReader: newReader,
-		logger:    logger,
-		handler:   handler,
-		ctx:       ctx,
-	}
-}
-
-func (w *PacketReaderWorker) Start() error {
-	select {
-	case <-w.ctx.Done():
-		return errors.New(ErrContextClosed)
-	default:
-		w.wg.Add(1)
-		go w.worker()
-		return nil
-	}
-}
-
-func (w *PacketReaderWorker) Wait() {
-	w.wg.Wait()
-}
-
-func (w *PacketReaderWorker) worker() {
-	defer w.wg.Done()
-
-	reader, err := w.newReader()
-	if err != nil {
-		w.logger.Printf("unable to create reader: %s\n", err)
-		return
-	}
-
-	packets := reader.Packets()
-
-	defer func() {
-		if err := reader.Close(); err != nil {
-			w.logger.Printf("unable to close reader: %s\n", err)
-		}
-	}()
-
-	for {
-		select {
-		case <-w.ctx.Done():
-			return
-		case packet, ok := <-packets:
-			if !ok {
-				w.logger.Printf("reader channel closed, exiting worker")
-				return
-			}
-			if err := w.handler(packet); err != nil {
-				w.logger.Printf("err handling packet: %s", err)
-			}
-		}
-	}
 }

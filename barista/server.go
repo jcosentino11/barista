@@ -15,12 +15,12 @@ const (
 )
 
 type Server struct {
-	Config       ServerConfig
-	readerWorker PacketReaderWorker
-	wg           sync.WaitGroup
-	ctx          context.Context
-	cancel       context.CancelFunc
-	logger       Logger
+	Config    ServerConfig
+	processor PacketProcessor
+	ctx       context.Context
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
+	logger    Logger
 }
 
 type ServerConfig struct {
@@ -37,7 +37,7 @@ func NewServer(config ServerConfig) *Server {
 		cancel: cancel,
 		logger: logger,
 	}
-	server.readerWorker = NewPacketReaderWorker(ctx, server.newPacketReader, server.handlePacket)
+	server.processor = NewPacketProcessor(server.newPacketReader, server.handlePacket)
 	return &server
 }
 
@@ -46,10 +46,13 @@ func (s *Server) Start() error {
 	case <-s.ctx.Done():
 		return errors.New(ErrServerClosed)
 	default:
-		if err := s.readerWorker.Start(); err != nil {
-			s.cancel()
-			return err
-		}
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			if err := s.processor.ProcessPackets(s.ctx); err != nil {
+				s.cancel()
+			}
+		}()
 		return nil
 	}
 }
@@ -60,7 +63,7 @@ func (s *Server) newPacketReader() (PacketReader, error) {
 		return nil, fmt.Errorf("unable to start server on port %d: %w", s.Config.Port, err)
 	}
 
-	reader := NewUdpPacketReader(conn)
+	reader := NewUdpPacketReader(s.ctx, conn)
 	return &reader, nil
 }
 
@@ -72,6 +75,6 @@ func (s *Server) handlePacket(packet PacketResult) error {
 
 func (s *Server) Stop() error {
 	s.cancel()
-	s.readerWorker.Wait()
+	s.wg.Wait()
 	return nil
 }
