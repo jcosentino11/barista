@@ -63,8 +63,9 @@ func (s *Server) newPacketReader() (PacketReader, error) {
 		return nil, fmt.Errorf("unable to start server on port %d: %w", s.Config.Port, err)
 	}
 
-	reader := NewUdpPacketReader(s.ctx, conn)
-	return &reader, nil
+	network_reader := NewUdpNetworkReader(conn)
+	packet_reader := NewDefaultPacketReader(s.ctx, &network_reader)
+	return &packet_reader, nil
 }
 
 // TODO pass this in to server
