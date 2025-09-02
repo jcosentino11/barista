@@ -13,13 +13,12 @@ func TestBarista(t *testing.T) {
 	server := barista.NewServer(barista.ServerConfig{
 		Port: 8080,
 	})
+	defer server.Stop()
 
 	err := server.Start()
 	if err != nil {
 		t.Fatalf("unable to start server: %s\n", err.Error())
 	}
-
-	defer server.Stop()
 
 	messageCallback := func(topic string, message string) {
 		t.Logf("received message on topic '%s': %s\n", topic, message)
@@ -29,12 +28,11 @@ func TestBarista(t *testing.T) {
 		ServerHost: "localhost",
 		ServerPort: 8080,
 	})
+	defer client.Stop()
 
-	if err := client.Connect(); err != nil {
-		t.Fatalf("failed to connect: %s\n", err.Error())
+	if err := client.Start(); err != nil {
+		t.Fatalf("failed to start: %s\n", err.Error())
 	}
-
-	defer client.Close()
 
 	err = client.Subscribe("topic", messageCallback)
 	if err != nil {

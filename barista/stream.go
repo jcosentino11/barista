@@ -2,7 +2,7 @@ package barista
 
 import (
 	"context"
-	"errors"
+	"net"
 	"sync"
 )
 
@@ -31,10 +31,18 @@ type NetworkPacketStream struct {
 	logger        Logger
 }
 
+func NewNetworkPacketStreamFromConn(ctx context.Context, conn net.Conn) (PacketStream, error) {
+	reader := NewDefaultNetworkReader(conn)
+	stream := NewNetworkPacketStream(ctx, &reader)
+	return &stream, nil
+}
+
 func NewNetworkPacketStream(ctx context.Context, networkReader NetworkReader) NetworkPacketStream {
-	logger := NewConsoleLogger("netowkr-packet-stream")
-	logger.Verbose = true // TODO
+	logger := NewConsoleLogger("network-packet-stream")
+	logger.Verbose = false // TODO
+
 	parser := NewDefaultParser()
+
 	return NetworkPacketStream{
 		networkReader: networkReader,
 		parser:        &parser,
@@ -46,14 +54,9 @@ func NewNetworkPacketStream(ctx context.Context, networkReader NetworkReader) Ne
 }
 
 func (r *NetworkPacketStream) Stream() (<-chan PacketResult, error) {
-	select {
-	case <-r.ctx.Done():
-		return nil, errors.New(ErrContextClosed)
-	default:
-		r.wg.Add(1)
-		go r.readPackets()
-		return r.packets, nil
-	}
+	r.wg.Add(1)
+	go r.readPackets()
+	return r.packets, nil
 }
 
 func (r *NetworkPacketStream) readPackets() {
@@ -62,12 +65,12 @@ func (r *NetworkPacketStream) readPackets() {
 	for {
 		select {
 		case <-r.ctx.Done():
+			// TODO handle cleanup better
 			r.logger.Verbosef("closed ctx detected\n")
 			return
 		default:
 			buf, err := r.networkReader.Bytes()
 			if err != nil {
-				r.logger.Printf("error reading from UDP: %s\n", err)
 				continue
 			}
 			packet, err := r.parser.Parse(buf)
@@ -81,9 +84,6 @@ func (r *NetworkPacketStream) readPackets() {
 
 func (r *NetworkPacketStream) Close() error {
 	close(r.packets)
-	if err := r.networkReader.Close(); err != nil {
-		return err
-	}
 	r.wg.Wait()
 	return nil
 }
