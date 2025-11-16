@@ -8,10 +8,7 @@ run:
     go run .
 
 test:
-    go test ./...
-
-test-coverage:
-    go test -coverprofile=coverage.out ./...
+    go test -v -coverpkg=./internal -coverprofile=coverage.out ./...
     go tool cover -html=coverage.out -o coverage.html
 
 fmt:
@@ -24,7 +21,7 @@ check: fmt vet test
 
 clean:
     rm -rf bin/
-    rm -f coverage.out coverage.html
+    rm -f coverage*.out coverage*.html benchmark*.out
     go clean
 
 deps:
