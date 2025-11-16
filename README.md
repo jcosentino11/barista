@@ -1,7 +1,3 @@
-# Barista
+# barista
 
-A toy message broker.
-
-## Setup
-
-See https://github.com/jcosentino11/devbox-aider-vscode-template
+An ultra-lightweight message broker
