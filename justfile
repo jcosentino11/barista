@@ -28,5 +28,5 @@ check: fmt vet test integration-test
 
 clean:
     rm -rf bin/
-    rm -f coverage.out coverage.html
+    rm -f coverage*.out coverage*.html benchmark*.out
     go clean
