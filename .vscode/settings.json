@@ -6,6 +6,10 @@
         }
     },
     "terminal.integrated.defaultProfile.osx": "devboxCompatibleShell",
+    // guard in case jetpack-io.devbox is installed; direnv already handles env-loading
+    "devbox.autoShellOnTerminal": false,
+    "vscode-just.justPath": ".devbox/nix/profile/default/bin/just",
+    "vscode-just.lspPath": ".devbox/nix/profile/default/bin/just-lsp",
     // override so we don't use GOPATH and accidentally clutter up home dir
     "go.toolsGopath": "${workspaceFolder}/.go",
     "go.toolsManagement.autoUpdate": true,
