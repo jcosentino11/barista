@@ -11,7 +11,8 @@
   },
   "shell": {
     "init_hook": [
-      "cp pre-commit.sh .git/hooks/pre-commit"
+      "cp pre-commit.sh .git/hooks/pre-commit",
+      "$DEVBOX_PROJECT_ROOT/.vscode/install-extensions.sh"
     ]
   }
 }
