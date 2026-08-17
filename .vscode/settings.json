@@ -6,7 +6,7 @@
         }
     },
     "terminal.integrated.defaultProfile.osx": "devboxCompatibleShell",
-    // direnv now loads devbox's env; don't let the devbox extension double-shell terminals
+    // guard in case jetpack-io.devbox is installed; direnv already handles env-loading
     "devbox.autoShellOnTerminal": false,
     "vscode-just.justPath": ".devbox/nix/profile/default/bin/just",
     "vscode-just.lspPath": ".devbox/nix/profile/default/bin/just-lsp",
